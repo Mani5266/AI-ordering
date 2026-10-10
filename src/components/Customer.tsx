@@ -231,13 +231,20 @@ function StatusBar({ status }: { status: string }) {
 }
 
 function Engagement() {
+  // PRD 3.4/M7: each item renders ONLY if configured — never a dead link.
+  const links = [
+    process.env.NEXT_PUBLIC_REVIEW_URL ? { icon: "⭐", label: "Review us", href: process.env.NEXT_PUBLIC_REVIEW_URL } : null,
+    process.env.NEXT_PUBLIC_INSTA_URL ? { icon: "📸", label: "Instagram", href: process.env.NEXT_PUBLIC_INSTA_URL } : null,
+    process.env.NEXT_PUBLIC_WA_URL ? { icon: "💬", label: "WhatsApp", href: process.env.NEXT_PUBLIC_WA_URL } : null,
+  ].filter((l): l is { icon: string; label: string; href: string } => l !== null);
+  if (!links.length) return null;
   return (
     <div className="mt-4 rounded-2xl bg-white p-4 text-center text-sm shadow">
       <div className="mb-2 font-bold text-[#0A2463]">While you wait…</div>
       <div className="flex justify-center gap-5 font-medium">
-        <a className="text-[#0A2463] underline" href={process.env.NEXT_PUBLIC_REVIEW_URL || "#"}>⭐ Review us</a>
-        <a className="text-[#0A2463] underline" href={process.env.NEXT_PUBLIC_INSTA_URL || "#"}>📸 Instagram</a>
-        <a className="text-[#0A2463] underline" href={process.env.NEXT_PUBLIC_WA_URL || "#"}>💬 WhatsApp</a>
+        {links.map((l) => (
+          <a key={l.label} className="text-[#0A2463] underline" href={l.href} target="_blank" rel="noreferrer">{l.icon} {l.label}</a>
+        ))}
       </div>
     </div>
   );
