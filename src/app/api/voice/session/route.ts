@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     body: JSON.stringify({
       agent_id: Number(process.env.OMNIDIM_AGENT_ID),
       type: "voice",
-      custom_variables: { table: s.table, restaurant: process.env.RESTAURANT_NAME ?? "Demo Cafe", session_id: s.sid },
+      custom_variables: { table: s.table, table_number: s.table, restaurant: process.env.RESTAURANT_NAME ?? "Demo Cafe", session_id: s.sid, sessionId: s.sid },
     }),
   });
   if (!r.ok) {
