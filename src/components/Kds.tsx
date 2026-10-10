@@ -118,7 +118,7 @@ export default function Kds() {
       {alerts.length > 0 && (
         <div className="px-3">
           {alerts.map((a) => (
-            <div key={a.id} className="mb-2 flex items-center justify-between rounded bg-amber-200 p-2 font-bold">
+            <div key={a.id} className="mb-2 flex items-center justify-between rounded-xl bg-amber-300 p-2.5 font-bold text-[#0A2463] shadow-sm">
               <span>🔔 Table {a.table} — {a.kind === "bill" ? "requests BILL" : "calls WAITER"}</span>
               <button onClick={() => dismissAlert(a.id)} className="rounded bg-[#0A2463] px-3 py-1 text-sm text-white">Done</button>
             </div>
