@@ -9,6 +9,8 @@ export default function VoiceWidget({ table }: { table: number; session: string 
   const [lines, setLines] = useState<{ role: string; text: string }[]>([]);
   const [why, setWhy] = useState("");
   const sessRef = useRef<{ stop: () => void } | null>(null);
+  const autoEnded = useRef(false);
+  const stop = () => { sessRef.current?.stop(); setState("ended"); };
 
   const start = async () => {
     setState("connecting");
@@ -41,6 +43,13 @@ export default function VoiceWidget({ table }: { table: number; session: string 
           if (last && last.role === t.role) return [...l.slice(0, -1), row];
           return [...l.slice(-3), row];
         });
+        // Order confirmed (agent's goodbye) -> hang up for the customer after a beat.
+        // Manual End stays available throughout.
+        if (t.role === "agent" && !autoEnded.current &&
+          /enjoy your meal|with the kitchen|thank you for your order|goodbye/i.test(t.text)) {
+          autoEnded.current = true;
+          setTimeout(() => { sessRef.current?.stop(); setState("ended"); }, 4000);
+        }
       });
       ws.on("error", (e: unknown) => { setWhy(e instanceof Error ? e.message : "connection error"); setState("failed"); });
       await ws.start({ wsUrl: ws_url });
@@ -50,8 +59,6 @@ export default function VoiceWidget({ table }: { table: number; session: string 
       setState("failed");
     }
   };
-
-  const stop = () => { sessRef.current?.stop(); setState("ended"); };
 
   if (state === "idle")
     return (
