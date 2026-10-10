@@ -6,18 +6,24 @@ import { rateLimit, LIMITS } from "@/lib/ratelimit";
 import { bodyTooBig, j } from "@/lib/api";
 
 type EV = {
-  items_json?: unknown; items?: unknown; table?: number; session_id?: string;
-  confirmed?: boolean; notes?: string; call_id?: string;
+  items_json?: unknown; items?: unknown; order_items?: unknown;
+  table?: number; table_number?: number;
+  session_id?: string; sessionId?: string;
+  confirmed?: boolean; confirmation?: unknown;
+  notes?: string; call_id?: string;
 };
 
 function extract(raw: unknown): { ev: EV; callId: string | null } {
   const r = (raw ?? {}) as Record<string, unknown>;
   const report = (r.call_report ?? {}) as Record<string, unknown>;
-  const ev = ((report.extracted_variables ?? r.extracted_variables ?? {}) as EV);
+  // OmniDim nests vars under call_report.extracted_variables; accept top-level too.
+  const nested = (report.extracted_variables ?? {}) as Record<string, unknown>;
+  const flat = (r.extracted_variables ?? {}) as Record<string, unknown>;
+  const ev = { ...flat, ...nested } as EV;
+  const str = (v: unknown) => (typeof v === "string" && v ? v : null);
   const callId =
-    (typeof ev.call_id === "string" && ev.call_id) ||
-    (typeof report.call_id === "string" && report.call_id) ||
-    (typeof r.call_id === "string" && r.call_id) ||
+    str(ev.call_id) || str(report.call_id) || str(report.callId) || str(r.call_id) ||
+    str(r.callId) || str(report.id) || str(r.id) || str((report.call_report as Record<string, unknown> | undefined)?.["id"]) ||
     null;
   return { ev, callId };
 }
@@ -59,15 +65,15 @@ export async function POST(req: Request, { params }: { params: { secret: string 
   const dup = await prisma.order.findUnique({ where: { providerCallId: callId } });
   if (dup) return j({ id: dup.id, duplicate: true });
 
-  const items = toItems(ev.items_json ?? ev.items);
+  const items = toItems(ev.items_json ?? ev.items ?? ev.order_items);
   if (!items) { console.warn("[webhook] rejected: unparseable items", { callId }); return j({ error: "unparseable items" }, 422); }
-  const table = Number(ev.table);
+  const table = Number(ev.table ?? ev.table_number);
   if (!Number.isInteger(table) || table < 1 || table > 10) {
     console.warn("[webhook] rejected: bad table", { callId }); return j({ error: "bad table" }, 422);
   }
 
   // bind to a live session for that table (injected at call start from Screen 1, PRD 7.1)
-  let sessionId = typeof ev.session_id === "string" ? ev.session_id : null;
+  let sessionId = typeof ev.session_id === "string" ? ev.session_id : typeof ev.sessionId === "string" ? ev.sessionId : null;
   if (sessionId) {
     const s = await prisma.tableSession.findUnique({ where: { id: sessionId } });
     if (!s || s.invalidated || s.expiresAt < new Date() || s.table !== table) sessionId = null;
@@ -81,8 +87,10 @@ export async function POST(req: Request, { params }: { params: { secret: string 
   }
   if (!sessionId) { console.warn("[webhook] rejected: no live session", { callId, table }); return j({ error: "no live session for table" }, 422); }
 
+  const confRaw = ev.confirmed ?? ev.confirmation;
+  const agreed = confRaw === true || (typeof confRaw === "string" && /^\s*(yes|y|confirmed|confirm)\b/i.test(confRaw));
   const v = await validateOrder(
-    { table, items: items.map((i) => ({ ...i, note: ev.notes ?? null })), confirmed: ev.confirmed === true },
+    { table, items: items.map((i) => ({ ...i, note: typeof ev.notes === "string" ? ev.notes : null })), confirmed: agreed },
     { sessionTable: table, source: "voice" },
   );
   if (!v.ok) { console.warn("[webhook] rejected: validation", { callId, error: v.error }); return j({ error: v.error }, 422); }
