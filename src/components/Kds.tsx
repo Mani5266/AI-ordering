@@ -126,9 +126,9 @@ export default function Kds() {
         </div>
       )}
 
-      <div className="flex gap-2 px-3 pt-2">
-        <button onClick={() => setTab("live")} className={`flex-1 rounded-xl py-2 font-bold ${tab === "live" ? "bg-[#0A2463] text-white" : "bg-white text-gray-600 shadow-sm"}`}>🔥 Live kitchen ({orders.length})</button>
-        <button onClick={() => { setTab("book"); load(pin); }} className={`flex-1 rounded-xl py-2 font-bold ${tab === "book" ? "bg-[#0A2463] text-white" : "bg-white text-gray-600 shadow-sm"}`}>📒 Day-book {book ? `(Rs ${book.billed_inr})` : ""}</button>
+      <div className="flex gap-2 px-3 pt-3">
+        <button onClick={() => setTab("live")} className={`flex-1 rounded-xl py-2.5 font-bold ${tab === "live" ? "bg-[#0A2463] text-white" : "bg-white text-gray-600 shadow-sm"}`}>🔥 Live kitchen ({orders.length})</button>
+        <button onClick={() => { setTab("book"); load(pin); }} className={`flex-1 rounded-xl py-2.5 font-bold ${tab === "book" ? "bg-[#0A2463] text-white" : "bg-white text-gray-600 shadow-sm"}`}>📒 Day-book {book ? `(Rs ${book.billed_inr})` : ""}</button>
       </div>
 
       {tab === "book" ? (
@@ -150,8 +150,8 @@ export default function Kds() {
         </div>
       ) : (
       <>
-      <div className="flex flex-wrap items-center gap-2 px-3 pb-1">
-        <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Show:</span>
+      <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-2 px-3">
+        <span className="w-full text-[11px] font-bold uppercase tracking-wider text-gray-500 md:w-auto">Show:</span>
         {(["all", "new", "accepted", "cooking", "ready"] as const).map((s) => (
           <button key={s} onClick={() => setFStatus(s)}
             className={`rounded-full px-3 py-1 text-xs font-bold capitalize ${fStatus === s ? "bg-[#0A2463] text-white" : "bg-white text-gray-600 shadow-sm"}`}>
