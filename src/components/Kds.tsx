@@ -20,10 +20,25 @@ export default function Kds() {
     fetch("/api/kds/queue", { headers: h }).then(async (r) => {
       if (!r.ok) return;
       setAuthed(true);
+      try { sessionStorage.setItem("tap_staff", p); } catch { /* private mode */ }
       const d = await r.json();
       setOrders(d.orders); setAlerts(d.alerts);
     });
     fetch("/api/owner/summary", { headers: h }).then((r) => r.json()).then(setSummary).catch(() => {});
+  };
+
+  // stay signed in across refreshes; Sign out button ends it explicitly
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem("tap_staff");
+      if (saved) { setPin(saved); load(saved); }
+    } catch { /* private mode */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const signOut = () => {
+    try { sessionStorage.removeItem("tap_staff"); } catch { /* private mode */ }
+    setPin(""); setAuthed(false); setOrders([]); setAlerts([]); setSummary(null);
   };
 
   useEffect(() => {
@@ -65,7 +80,10 @@ export default function Kds() {
     <main className="min-h-screen bg-gray-50">
       <header className="flex items-center justify-between bg-[#0A2463] px-4 py-3 text-white">
         <div className="font-bold">☕ Demo Cafe — Kitchen {fresh > 0 && <span className="ml-2 animate-pulse rounded bg-red-600 px-2 py-0.5 text-sm">{fresh} NEW</span>}</div>
-        <button onClick={resetTable} className="text-xs underline">Reset table sessions</button>
+        <div className="flex gap-4 text-xs">
+          <button onClick={resetTable} className="underline">Reset table sessions</button>
+          <button onClick={signOut} className="rounded bg-white px-3 py-1 font-bold text-[#0A2463]">Sign out</button>
+        </div>
       </header>
 
       {summary && (
