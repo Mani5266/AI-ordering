@@ -27,6 +27,11 @@ yarn-error.log*
 
 # local env files
 .env*.local
+# taporder-ai secrets + sqlite (PRD 9/T9)
+.env
+*.db
+*.db-journal
+/public/qr/*.png
 
 # vercel
 .vercel

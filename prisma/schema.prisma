@@ -1,0 +1,64 @@
+// TapOrder AI — Prisma schema (PRD 10.3). SQLite for hackathon demo.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model MenuItem {
+  id         String   @id // M01..M14, never reused (PRD 6.2)
+  name       String
+  aliases    String   // JSON array of spoken variants
+  priceInr   Int
+  veg        Boolean
+  spiceLevel String   // none | mild | medium | hot
+  allergens  String   // JSON array from nuts | dairy | gluten
+  available  Boolean  @default(true)
+  category   String   // south-indian | cafe | tandoor | mains | drinks
+}
+
+model TableSession {
+  id          String   @id @default(cuid())
+  table       Int
+  issuedAt    DateTime @default(now())
+  expiresAt   DateTime
+  invalidated Boolean  @default(false)
+  orders      Order[]
+}
+
+model Order {
+  id           String   @id @default(cuid())
+  table        Int
+  source       String   // voice | tap
+  items        String   // JSON array of validated line items (server-priced, PRD 10.1)
+  totalInr     Int      // server-computed, never client-supplied
+  confirmed    Boolean
+  status       String   @default("new") // new|accepted|cooking|ready|served|rejected|cancelled
+  sessionId    String
+  session      TableSession @relation(fields: [sessionId], references: [id])
+  providerCallId String? @unique // idempotency key for voice webhooks (PRD 9/T4)
+  partialMatch Boolean  @default(false) // true when some voice items were unknown (PRD M4)
+  createdAt    DateTime @default(now())
+  events       OrderEvent[]
+}
+
+model OrderEvent {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  from      String
+  to        String
+  actor     String   // customer | staff | system | webhook
+  createdAt DateTime @default(now())
+}
+
+model WaiterRequest {
+  id        String   @id @default(cuid())
+  table     Int
+  kind      String   // waiter | bill
+  done      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
