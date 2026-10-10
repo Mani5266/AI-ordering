@@ -62,8 +62,9 @@ export default function VoiceWidget({ table }: { table: number; session: string 
 
   if (state === "idle")
     return (
-      <button onClick={start} style={{ background: "#ffffff", color: "#0A2463" }} className="mt-3 rounded-full px-8 py-3 text-base font-bold shadow">
-        📞 Start call — Table {table}
+      <button onClick={start} style={{ background: "#ffffff", color: "#0A2463" }}
+        className="mt-4 inline-flex items-center gap-2 whitespace-nowrap rounded-full px-7 py-3 text-[15px] font-bold shadow-lg">
+        <span>📞</span><span>Start call — Table {table}</span>
       </button>
     );
   if (state === "connecting") return <div className="mt-3 text-sm">Connecting your call… (allow the mic)</div>;

@@ -83,10 +83,11 @@ export default function Customer({ table }: { table: number }) {
 
   const groups = Array.from(new Set(menu.map((m) => m.category)));
   return (
-    <main className="min-h-screen bg-gray-50 pb-40 text-gray-900">
-      <header className={`${NAVY} px-4 py-4 text-center text-white`}>
-        <h1 className="text-xl font-bold tracking-wide">☕ Demo Cafe <span className="ml-2 rounded-md bg-white px-2 py-0.5 text-[#0A2463]">Table {table}</span></h1>
-        <p className="mt-0.5 text-xs text-blue-100">One QR. One kitchen. Speak or tap.</p>
+    <main className="min-h-screen bg-[#F6F4EE] pb-40 text-gray-900">
+      <header className={`${NAVY} px-4 pb-5 pt-4 text-center text-white`}>
+        <div className="text-xs uppercase tracking-[0.25em] text-blue-200">Demo Cafe</div>
+        <h1 className="mt-0.5 font-serif text-2xl font-bold tracking-wide">Table {table}</h1>
+        <p className="mt-0.5 text-[11px] text-blue-100">One QR. One kitchen. Speak or tap.</p>
       </header>
 
       <div className="mx-auto w-full max-w-3xl px-3 md:px-6">
@@ -95,29 +96,39 @@ export default function Customer({ table }: { table: number }) {
             {confirmed && (
               <button onClick={() => setReorder(false)} className="mt-3 text-sm font-bold text-[#0A2463]">← Back to my order</button>
             )}
-            <section className="mt-3 rounded-3xl bg-gradient-to-b from-[#12326e] to-[#0A2463] p-6 text-center text-white shadow-lg">
-              <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-white text-2xl shadow">📞</div>
-              <div className="text-2xl font-bold">Call to Order</div>
-              <p className="mx-auto mt-1 max-w-md text-sm leading-relaxed text-blue-100">Tap below and speak your order — e.g. “two masala dosa, one less spicy, three filter coffee”</p>
-              <VoiceWidget table={table} session="" />
+            <section className="relative -mt-0 overflow-hidden rounded-3xl bg-gradient-to-b from-[#14337a] to-[#0A2463] p-6 pb-7 text-center text-white shadow-xl">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white text-3xl shadow-lg">📞</div>
+              <div className="mt-2 font-serif text-3xl font-bold">Call to Order</div>
+              <p className="mx-auto mt-1.5 max-w-md text-[13px] leading-relaxed text-blue-100">Tap below and speak your order — e.g. “two masala dosa, one less spicy, three filter coffee”</p>
+              <div className="mt-4 flex justify-center">
+                <VoiceWidget table={table} session="" />
+              </div>
             </section>
-            <p className="my-3 text-center text-sm font-medium text-gray-500">See something you like? Call to Order above — just say it.</p>
+            <p className="my-4 text-center text-[13px] font-medium text-gray-500">See something you like? Call above — just say it.</p>
 
             {groups.map((g) => (
-              <section key={g} className="mb-5">
-                <h2 className="mb-2 text-sm font-bold uppercase tracking-wider text-[#0A2463]">{g.replace("-", " ")}</h2>
-                <div className="grid gap-2 md:grid-cols-2">
+              <section key={g} className="mb-6">
+                <div className="mb-2 flex items-center gap-3">
+                  <h2 className="font-serif text-lg font-bold uppercase tracking-wider text-[#0A2463]">{g.replace("-", " ")}</h2>
+                  <div className="h-px flex-1 bg-[#0A2463]/15" />
+                  <span className="text-xs font-semibold text-gray-400">{menu.filter((m) => m.category === g).length} items</span>
+                </div>
+                <div className="grid gap-2.5 md:grid-cols-2">
                   {menu.filter((m) => m.category === g).map((m) => (
-                    <article key={m.id} className={`flex items-center justify-between gap-2 rounded-xl bg-white p-3 shadow-sm ${m.available ? "" : "opacity-50"}`}>
-                      <div className="min-w-0">
-                        <div className="truncate font-semibold text-gray-900">
-                          <span className={m.veg ? "text-green-600" : "text-red-600"}>{m.veg ? "● " : "● "}</span>{m.name}
+                    <article key={m.id} className={`flex items-start justify-between gap-3 rounded-2xl bg-white p-4 shadow-[0_1px_4px_rgba(10,36,99,0.08)] ${m.available ? "" : "opacity-50"}`}>
+                      <div className="flex min-w-0 gap-2.5">
+                        <VegMark veg={m.veg} />
+                        <div className="min-w-0">
+                          <div className="font-serif text-[17px] font-bold leading-snug text-gray-900">{m.name}</div>
+                          <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                            <span className="rounded-full bg-[#0A2463]/5 px-2 py-0.5 text-[13px] font-bold text-[#0A2463]">Rs {m.price_inr}</span>
+                            {m.spice_level !== "none" && <span className="text-xs text-orange-600">{"🔥".repeat(m.spice_level === "hot" ? 2 : 1)} {m.spice_level}</span>}
+                          </div>
+                          {m.allergens.length > 0 && <div className="mt-1 text-[11px] font-medium text-red-600">contains: {m.allergens.join(", ")}</div>}
                         </div>
-                        <div className="text-sm font-bold text-[#0A2463]">Rs {m.price_inr}</div>
-                        {m.allergens.length > 0 && <div className="text-xs font-medium text-red-600">contains: {m.allergens.join(", ")}</div>}
                       </div>
                       <button disabled={!m.available} onClick={() => add(m.id)}
-                        className={`${NAVY} shrink-0 rounded-lg px-4 py-2 text-sm font-bold text-white disabled:bg-gray-300 ${tapMode ? "" : "hidden"}`}>
+                        className={`${NAVY} mt-0.5 shrink-0 rounded-xl px-4 py-2 text-sm font-bold text-white disabled:bg-gray-300 ${tapMode ? "" : "hidden"}`}>
                         {m.available ? "Add" : "Out"}
                       </button>
                     </article>
@@ -193,6 +204,16 @@ export default function Customer({ table }: { table: number }) {
         </div>
       )}
     </main>
+  );
+}
+
+function VegMark({ veg }: { veg: boolean }) {
+  const c = veg ? "border-green-700" : "border-red-700";
+  const dot = veg ? "bg-green-700" : "bg-red-700";
+  return (
+    <span className={`mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] border-2 ${c}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
+    </span>
   );
 }
 
