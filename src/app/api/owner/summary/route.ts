@@ -5,8 +5,11 @@ import { needStaff, j } from "@/lib/api";
 export async function GET(req: Request) {
   const deny = needStaff(req);
   if (deny) return deny;
+  const range = new URL(req.url).searchParams.get("range") ?? "day";
   const start = new Date();
-  start.setHours(0, 0, 0, 0);
+  if (range === "month") { start.setDate(start.getDate() - 30); }
+  else if (range === "week") { start.setDate(start.getDate() - 7); }
+  else { start.setHours(0, 0, 0, 0); }
   const orders = await prisma.order.findMany({
     where: { createdAt: { gte: start } },
     include: { session: true },
@@ -23,9 +26,11 @@ export async function GET(req: Request) {
   const top = Array.from(dishCount.entries()).sort((a, b) => b[1] - a[1]).slice(0, 3)
     .map(([name, qty]) => ({ name, qty }));
   // footfall: one scanned session that ordered = one customer visit (PRD M8)
-  const customersToday = new Set(orders.map((o) => o.sessionId)).size;
+  const customers = new Set(orders.map((o) => o.sessionId)).size;
+  const paid = orders.filter((o) => o.paid).reduce((s, o) => s + o.totalInr, 0);
   return j({
-    orders: orders.length, revenue_inr: revenue, customers_today: customersToday,
+    range, orders: orders.length, revenue_inr: revenue, customers_today: customers,
+    paid_inr: paid,
     voice: voice.length, tap: tap.length,
     voice_share: orders.length ? Math.round((voice.length / orders.length) * 100) : 0,
     completion_rate: undefined, // computed client-side from voice test log (M8) — never estimated here

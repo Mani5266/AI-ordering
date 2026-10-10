@@ -14,7 +14,8 @@ export default function Kds() {
   const [pinError, setPinError] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [alerts, setAlerts] = useState<{ id: string; table: number; kind: string }[]>([]);
-  const [summary, setSummary] = useState<{ orders: number; revenue_inr: number; customers_today: number; voice: number; tap: number; voice_share: number; avg_order_seconds: { voice: number; tap: number }; top_dishes: { name: string; qty: number }[] } | null>(null);
+  const [summary, setSummary] = useState<{ range: string; orders: number; revenue_inr: number; customers_today: number; paid_inr: number; voice: number; tap: number; voice_share: number; avg_order_seconds: { voice: number; tap: number }; top_dishes: { name: string; qty: number }[] } | null>(null);
+  const [range, setRange] = useState("day");
   const [fStatus, setFStatus] = useState("all");
   const [fSource, setFSource] = useState("all");
   const [tab, setTab] = useState<"live" | "book">("live");
@@ -30,7 +31,7 @@ export default function Kds() {
       const d = await r.json();
       setOrders(d.orders); setAlerts(d.alerts);
     });
-    fetch("/api/owner/summary", { headers: h }).then(async (r) => {
+    fetch(`/api/owner/summary?range=${range}`, { headers: h }).then(async (r) => {
       if (!r.ok) return; // wrong PIN — stay on login instead of crashing on the error shape
       setSummary(await r.json());
     }).catch(() => {});
@@ -110,6 +111,17 @@ export default function Kds() {
       </header>
 
       {summary && (
+        <>
+        <div className="flex items-center gap-2 px-3 pt-2">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Analytics:</span>
+          {(["day", "week", "month"] as const).map((rg) => (
+            <button key={rg} onClick={() => { setRange(rg); setTimeout(() => load(pin), 0); }}
+              className={`rounded-full px-4 py-1 text-xs font-bold capitalize ${range === rg ? "bg-[#0A2463] text-white" : "bg-white text-gray-600 shadow-sm"}`}>
+              {rg === "day" ? "Today" : rg === "week" ? "7 days" : "30 days"}
+            </button>
+          ))}
+          <span className="text-xs font-semibold text-green-800">Collected: Rs {summary.paid_inr}</span>
+        </div>
         <section className="grid grid-cols-2 gap-2.5 p-3 md:grid-cols-6">
           <Stat icon="🧾" label="Orders today" value={String(summary.orders)} />
           <Stat icon="🧑‍🍳" label="Customers today" value={String(summary.customers_today ?? 0)} />
@@ -118,6 +130,7 @@ export default function Kds() {
           <Stat icon="⏱" label="Avg order time" value={`${fmtDur(summary.avg_order_seconds.voice)} v / ${fmtDur(summary.avg_order_seconds.tap)} t`} />
           <Stat icon="🏆" label="Top dishes" value={summary.top_dishes.map((d) => `${d.name}×${d.qty}`).join(", ") || "—"} />
         </section>
+        </>
       )}
 
       {alerts.length > 0 && (
