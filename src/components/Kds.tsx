@@ -15,6 +15,8 @@ export default function Kds() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [alerts, setAlerts] = useState<{ id: string; table: number; kind: string }[]>([]);
   const [summary, setSummary] = useState<{ orders: number; revenue_inr: number; customers_today: number; voice: number; tap: number; voice_share: number; avg_order_seconds: { voice: number; tap: number }; top_dishes: { name: string; qty: number }[] } | null>(null);
+  const [fStatus, setFStatus] = useState("all");
+  const [fSource, setFSource] = useState("all");
 
   const load = (p: string) => {
     const h = { "x-staff-pin": p };
@@ -82,24 +84,29 @@ export default function Kds() {
     );
 
   const fresh = orders.filter((o) => o.status === "new").length;
+  const visible = orders.filter((o) =>
+    (fStatus === "all" || o.status === fStatus) && (fSource === "all" || o.source === fSource));
   return (
-    <main className="min-h-screen bg-gray-50">
-      <header className="flex items-center justify-between bg-[#0A2463] px-4 py-3 text-white">
-        <div className="font-bold">☕ Demo Cafe — Kitchen {fresh > 0 && <span className="ml-2 animate-pulse rounded bg-red-600 px-2 py-0.5 text-sm">{fresh} NEW</span>}</div>
-        <div className="flex gap-4 text-xs">
-          <button onClick={resetTable} className="underline">Reset table sessions</button>
-          <button onClick={signOut} className="rounded bg-white px-3 py-1 font-bold text-[#0A2463]">Sign out</button>
+    <main className="min-h-screen bg-[#F6F4EE]">
+      <header className="flex items-center justify-between bg-[#0A2463] px-4 py-3.5 text-white shadow">
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.25em] text-blue-200">Demo Cafe</div>
+          <div className="font-serif text-xl font-bold">Kitchen {fresh > 0 && <span className="ml-2 animate-pulse rounded-full bg-red-600 px-2.5 py-0.5 align-middle text-sm">{fresh} NEW</span>}</div>
+        </div>
+        <div className="flex items-center gap-4 text-xs">
+          <button onClick={resetTable} className="underline text-blue-100">Reset table sessions</button>
+          <button onClick={signOut} className="rounded-full bg-white px-4 py-1.5 font-bold text-[#0A2463]">Sign out</button>
         </div>
       </header>
 
       {summary && (
-        <section className="grid grid-cols-2 gap-2 p-3 md:grid-cols-6">
-          <Stat label="Orders today" value={String(summary.orders)} />
-          <Stat label="Customers today" value={String(summary.customers_today ?? 0)} />
-          <Stat label="Revenue" value={`Rs ${summary.revenue_inr}`} />
-          <Stat label="Voice share" value={`${summary.voice_share}% (${summary.voice}v/${summary.tap}t)`} />
-          <Stat label="Avg order time" value={`${summary.avg_order_seconds.voice}s v / ${summary.avg_order_seconds.tap}s t`} />
-          <Stat label="Top dishes" value={summary.top_dishes.map((d) => `${d.name}×${d.qty}`).join(", ") || "—"} />
+        <section className="grid grid-cols-2 gap-2.5 p-3 md:grid-cols-6">
+          <Stat icon="🧾" label="Orders today" value={String(summary.orders)} />
+          <Stat icon="🧑‍🍳" label="Customers today" value={String(summary.customers_today ?? 0)} />
+          <Stat icon="💰" label="Revenue" value={`Rs ${summary.revenue_inr}`} />
+          <Stat icon="🎙" label="Voice share" value={`${summary.voice_share}% (${summary.voice}v/${summary.tap}t)`} />
+          <Stat icon="⏱" label="Avg order time" value={`${fmtDur(summary.avg_order_seconds.voice)} v / ${fmtDur(summary.avg_order_seconds.tap)} t`} />
+          <Stat icon="🏆" label="Top dishes" value={summary.top_dishes.map((d) => `${d.name}×${d.qty}`).join(", ") || "—"} />
         </section>
       )}
 
@@ -114,8 +121,28 @@ export default function Kds() {
         </div>
       )}
 
+      <div className="flex flex-wrap items-center gap-2 px-3 pb-1">
+        <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Show:</span>
+        {(["all", "new", "accepted", "cooking", "ready"] as const).map((s) => (
+          <button key={s} onClick={() => setFStatus(s)}
+            className={`rounded-full px-3 py-1 text-xs font-bold capitalize ${fStatus === s ? "bg-[#0A2463] text-white" : "bg-white text-gray-600 shadow-sm"}`}>
+            {s === "all" ? "All status" : s}
+          </button>
+        ))}
+        <span className="mx-1 h-4 w-px bg-gray-300" />
+        {(["all", "voice", "tap"] as const).map((s) => (
+          <button key={s} onClick={() => setFSource(s)}
+            className={`rounded-full px-3 py-1 text-xs font-bold capitalize ${fSource === s ? "bg-[#0A2463] text-white" : "bg-white text-gray-600 shadow-sm"}`}>
+            {s === "all" ? "Voice + Tap" : s === "voice" ? "🎙 Voice" : "👆 Tap"}
+          </button>
+        ))}
+        {(fStatus !== "all" || fSource !== "all") && (
+          <span className="text-xs font-semibold text-gray-500">{visible.length} shown</span>
+        )}
+      </div>
+
       <div className="grid gap-3 p-3 md:grid-cols-2 xl:grid-cols-3">
-        {orders.map((o) => (
+        {visible.map((o) => (
           <article key={o.id} className={`rounded-lg border-l-8 bg-white p-3 shadow ${STATUS_COLOR[o.status] ?? "border-gray-300"}`}>
             <div className="flex items-center justify-between">
               <span className="text-2xl font-bold text-[#0A2463]">Table {o.table}</span>
@@ -144,17 +171,25 @@ export default function Kds() {
             )}
           </article>
         ))}
-        {orders.length === 0 && <p className="text-gray-500">No active orders — waiting for the next QR scan.</p>}
+        {visible.length === 0 && <p className="text-gray-500">{orders.length === 0 ? "No active orders — waiting for the next QR scan." : "No orders match this filter."}</p>}
       </div>
     </main>
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function fmtDur(sec: number): string {
+  if (!sec || sec <= 0) return "—";
+  if (sec < 90) return `${sec}s`;
+  const m = Math.round(sec / 60);
+  return m < 90 ? `${m}m` : `${Math.round(m / 60)}h`;
+}
+
+function Stat({ icon, label, value }: { icon: string; label: string; value: string }) {
   return (
-    <div className="rounded-lg bg-white p-2 text-center shadow">
-      <div className="text-xs text-gray-500">{label}</div>
-      <div className="font-bold text-[#0A2463]">{value}</div>
+    <div className="rounded-2xl bg-white p-3 text-center shadow-[0_1px_4px_rgba(10,36,99,0.08)]">
+      <div className="text-lg">{icon}</div>
+      <div className="mt-0.5 text-[11px] font-medium uppercase tracking-wide text-gray-500">{label}</div>
+      <div className="font-serif text-lg font-bold text-[#0A2463]">{value}</div>
     </div>
   );
 }
