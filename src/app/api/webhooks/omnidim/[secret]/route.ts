@@ -20,12 +20,26 @@ function extract(raw: unknown): { ev: EV; callId: string | null } {
   const nested = (report.extracted_variables ?? {}) as Record<string, unknown>;
   const flat = (r.extracted_variables ?? {}) as Record<string, unknown>;
   const ev = { ...flat, ...nested } as EV;
-  const str = (v: unknown) => (typeof v === "string" && v ? v : null);
+  const idstr = (v: unknown) =>
+    typeof v === "string" && v ? v : typeof v === "number" && Number.isFinite(v) ? String(v) : null;
   const callId =
-    str(ev.call_id) || str(report.call_id) || str(report.callId) || str(r.call_id) ||
-    str(r.callId) || str(report.id) || str(r.id) || str((report.call_report as Record<string, unknown> | undefined)?.["id"]) ||
+    idstr(ev.call_id) || idstr(report.call_id) || idstr(report.callId) || idstr(r.call_id) ||
+    idstr(r.callId) || idstr(report.id) || idstr(r.id) || idstr(r.call_sid) || idstr(report.call_sid) ||
     null;
   return { ev, callId };
+}
+
+// Table fallback: the agent always speaks the table number ("table 7").
+// Custom vars are NOT echoed in this payload, so mine the summary/conversation text.
+function tableFromText(report: Record<string, unknown>): number | null {
+  for (const k of ["summary", "full_conversation", "fullConversation"]) {
+    const t = report[k];
+    if (typeof t === "string") {
+      const m = t.match(/table\s+(\d{1,2})/i);
+      if (m) { const n = Number(m[1]); if (n >= 1 && n <= 10) return n; }
+    }
+  }
+  return null;
 }
 
 // items_json may arrive as a JSON string — parse defensively (PRD 7.4).
@@ -67,7 +81,10 @@ export async function POST(req: Request, { params }: { params: { secret: string 
 
   const items = toItems(ev.items_json ?? ev.items ?? ev.order_items);
   if (!items) { console.warn("[webhook] rejected: unparseable items", { callId }); return j({ error: "unparseable items" }, 422); }
-  const table = Number(ev.table ?? ev.table_number);
+  const rawTable = Number(ev.table ?? ev.table_number);
+  const table = Number.isInteger(rawTable) && rawTable >= 1 && rawTable <= 10
+    ? rawTable
+    : tableFromText((raw as Record<string, unknown>).call_report as Record<string, unknown> ?? {});
   if (!Number.isInteger(table) || table < 1 || table > 10) {
     console.warn("[webhook] rejected: bad table", { callId }); return j({ error: "bad table" }, 422);
   }
