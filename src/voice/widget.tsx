@@ -33,8 +33,14 @@ export default function VoiceWidget({ table }: { table: number; session: string 
         else if (typeof st === "object") setState("ended");
       });
       ws.on("transcript", (t: { role: string; text: string; final: boolean }) => {
-        if (!t.final) return;
-        setLines((l) => [...l.slice(-5), { role: t.role, text: t.text }]);
+        if (!t.final || !t.text.trim()) return;
+        // OmniDim sends cumulative snapshots per turn — replace same-role line, never stack.
+        setLines((l) => {
+          const last = l[l.length - 1];
+          const row = { role: t.role, text: t.text };
+          if (last && last.role === t.role) return [...l.slice(0, -1), row];
+          return [...l.slice(-3), row];
+        });
       });
       ws.on("error", (e: unknown) => { setWhy(e instanceof Error ? e.message : "connection error"); setState("failed"); });
       await ws.start({ wsUrl: ws_url });
