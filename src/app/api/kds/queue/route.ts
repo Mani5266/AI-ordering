@@ -7,8 +7,11 @@ export async function GET(req: Request) {
   if (deny) return deny;
   const orders = await prisma.order.findMany({
     where: { status: { in: ["new", "accepted", "cooking", "ready"] } },
-    orderBy: [{ status: "asc" }, { createdAt: "desc" }],
   });
+  // M6: NEW orders first (FCFS — whoever ordered first gets cooked first),
+  // then in-progress; newest-first within a state.
+  const rank: Record<string, number> = { new: 0, accepted: 1, cooking: 2, ready: 3 };
+  orders.sort((a, b) => (rank[a.status] ?? 9) - (rank[b.status] ?? 9) || b.createdAt.getTime() - a.createdAt.getTime());
   const alerts = await prisma.waiterRequest.findMany({
     where: { done: false }, orderBy: { createdAt: "desc" },
   });
