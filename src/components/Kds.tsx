@@ -11,6 +11,7 @@ const STATUS_COLOR: Record<string, string> = { new: "border-red-500", accepted: 
 export default function Kds() {
   const [pin, setPin] = useState("");
   const [authed, setAuthed] = useState(false);
+  const [pinError, setPinError] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [alerts, setAlerts] = useState<{ id: string; table: number; kind: string }[]>([]);
   const [summary, setSummary] = useState<{ orders: number; revenue_inr: number; customers_today: number; voice: number; tap: number; voice_share: number; avg_order_seconds: { voice: number; tap: number }; top_dishes: { name: string; qty: number }[] } | null>(null);
@@ -18,13 +19,17 @@ export default function Kds() {
   const load = (p: string) => {
     const h = { "x-staff-pin": p };
     fetch("/api/kds/queue", { headers: h }).then(async (r) => {
-      if (!r.ok) return;
+      if (!r.ok) { setPinError(true); return; }
+      setPinError(false);
       setAuthed(true);
       try { sessionStorage.setItem("tap_staff", p); } catch { /* private mode */ }
       const d = await r.json();
       setOrders(d.orders); setAlerts(d.alerts);
     });
-    fetch("/api/owner/summary", { headers: h }).then((r) => r.json()).then(setSummary).catch(() => {});
+    fetch("/api/owner/summary", { headers: h }).then(async (r) => {
+      if (!r.ok) return; // wrong PIN — stay on login instead of crashing on the error shape
+      setSummary(await r.json());
+    }).catch(() => {});
   };
 
   // stay signed in across refreshes; Sign out button ends it explicitly
@@ -72,6 +77,7 @@ export default function Kds() {
         <input value={pin} onChange={(e) => setPin(e.target.value)} inputMode="numeric" type="password" placeholder="Staff PIN"
           className="mt-2 w-full rounded border p-2 text-center text-2xl" onKeyDown={(e) => e.key === "Enter" && load(pin)} />
         <button onClick={() => load(pin)} className="mt-2 w-full rounded bg-[#0A2463] py-2 text-white">Open KDS</button>
+        {pinError && <p className="mt-2 font-bold text-red-600">Wrong PIN — check STAFF_PIN and retry.</p>}
       </main>
     );
 
