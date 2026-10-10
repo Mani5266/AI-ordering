@@ -17,6 +17,8 @@ export default function Kds() {
   const [summary, setSummary] = useState<{ orders: number; revenue_inr: number; customers_today: number; voice: number; tap: number; voice_share: number; avg_order_seconds: { voice: number; tap: number }; top_dishes: { name: string; qty: number }[] } | null>(null);
   const [fStatus, setFStatus] = useState("all");
   const [fSource, setFSource] = useState("all");
+  const [tab, setTab] = useState<"live" | "book">("live");
+  const [book, setBook] = useState<{ billed_inr: number; orders: Order[] } | null>(null);
 
   const load = (p: string) => {
     const h = { "x-staff-pin": p };
@@ -31,6 +33,9 @@ export default function Kds() {
     fetch("/api/owner/summary", { headers: h }).then(async (r) => {
       if (!r.ok) return; // wrong PIN — stay on login instead of crashing on the error shape
       setSummary(await r.json());
+    }).catch(() => {});
+    if (tab === "book") fetch("/api/owner/orders", { headers: h }).then(async (r) => {
+      if (r.ok) setBook(await r.json());
     }).catch(() => {});
   };
 
@@ -121,6 +126,30 @@ export default function Kds() {
         </div>
       )}
 
+      <div className="flex gap-2 px-3 pt-2">
+        <button onClick={() => setTab("live")} className={`flex-1 rounded-xl py-2 font-bold ${tab === "live" ? "bg-[#0A2463] text-white" : "bg-white text-gray-600 shadow-sm"}`}>🔥 Live kitchen ({orders.length})</button>
+        <button onClick={() => { setTab("book"); load(pin); }} className={`flex-1 rounded-xl py-2 font-bold ${tab === "book" ? "bg-[#0A2463] text-white" : "bg-white text-gray-600 shadow-sm"}`}>📒 Day-book {book ? `(Rs ${book.billed_inr})` : ""}</button>
+      </div>
+
+      {tab === "book" ? (
+        <div className="grid gap-2 p-3 md:grid-cols-2 xl:grid-cols-3">
+          {(book?.orders ?? []).map((o) => (
+            <article key={o.id} className="rounded-2xl bg-white p-3 shadow-[0_1px_4px_rgba(10,36,99,0.08)]">
+              <div className="flex items-center justify-between">
+                <span className="font-serif text-lg font-bold text-[#0A2463]">Table {o.table}</span>
+                <span className="text-xs font-bold text-gray-500">{new Date(o.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+              </div>
+              <div className="text-sm text-gray-700">{o.items.map((it) => `${it.qty}× ${it.name}`).join(", ")}</div>
+              <div className="mt-1 flex items-center justify-between">
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${o.source === "voice" ? "bg-[#0A2463] text-white" : "bg-[#3E6CB5] text-white"}`}>{o.source}</span>
+                <span className="text-sm"><span className="mr-2 capitalize text-gray-500">{o.status}</span><b>Rs {o.total_inr}</b></span>
+              </div>
+            </article>
+          ))}
+          {(book?.orders ?? []).length === 0 && <p className="text-gray-500">No orders yet today.</p>}
+        </div>
+      ) : (
+      <>
       <div className="flex flex-wrap items-center gap-2 px-3 pb-1">
         <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Show:</span>
         {(["all", "new", "accepted", "cooking", "ready"] as const).map((s) => (
@@ -173,6 +202,8 @@ export default function Kds() {
         ))}
         {visible.length === 0 && <p className="text-gray-500">{orders.length === 0 ? "No active orders — waiting for the next QR scan." : "No orders match this filter."}</p>}
       </div>
+      </>
+      )}
     </main>
   );
 }
