@@ -84,8 +84,8 @@ export async function POST(req: Request, { params }: { params: { secret: string 
   const rawTable = Number(ev.table ?? ev.table_number);
   const table = Number.isInteger(rawTable) && rawTable >= 1 && rawTable <= 10
     ? rawTable
-    : tableFromText((raw as Record<string, unknown>).call_report as Record<string, unknown> ?? {});
-  if (!Number.isInteger(table) || table < 1 || table > 10) {
+    : tableFromText(((raw ?? {}) as Record<string, unknown>).call_report as Record<string, unknown> ?? {});
+  if (!table) {
     console.warn("[webhook] rejected: bad table", { callId }); return j({ error: "bad table" }, 422);
   }
 
