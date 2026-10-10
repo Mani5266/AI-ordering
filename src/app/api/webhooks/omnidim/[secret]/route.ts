@@ -40,8 +40,11 @@ export async function POST(req: Request, { params }: { params: { secret: string 
   if (bodyTooBig(req)) return j({ error: "body too large" }, 413);
   const want = process.env.WEBHOOK_SECRET ?? "";
   const pathOk = params.secret.length === want.length && params.secret === want;
-  const headOk = (req.headers.get("x-webhook-secret") ?? "") === want && want.length > 0;
-  if (!pathOk || !headOk) {
+  // Defense in depth: if the provider can send x-webhook-secret, it must match.
+  // OmniDim's dashboard webhook sends no custom headers, so the unguessable path
+  // secret is the credential; idempotency + schema + rate limit stand behind it (T4).
+  const header = req.headers.get("x-webhook-secret");
+  if (!pathOk || (header !== null && header !== want)) {
     console.warn("[webhook] rejected: bad secret");
     return j({ error: "forbidden" }, 403); // T4: no order, logged
   }
