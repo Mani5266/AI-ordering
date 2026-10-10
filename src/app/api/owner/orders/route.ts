@@ -12,12 +12,13 @@ export async function GET(req: Request) {
     orderBy: { createdAt: "desc" },
     take: 100,
   });
-  const billed = orders.filter((o) => o.status === "served").reduce((s, o) => s + o.totalInr, 0);
+  const billed_inr = orders.filter((o) => o.status === "served").reduce((s, o) => s + o.totalInr, 0);
+  const paid_inr = orders.filter((o) => o.paid).reduce((s, o) => s + o.totalInr, 0);
   return j({
-    billed_inr: billed,
+    billed_inr, paid_inr,
     orders: orders.map((o) => ({
       id: o.id, table: o.table, source: o.source, items: JSON.parse(o.items),
-      total_inr: o.totalInr, status: o.status, partialMatch: o.partialMatch,
+      total_inr: o.totalInr, status: o.status, paid: o.paid, partialMatch: o.partialMatch,
       created_at: o.createdAt,
     })),
   });

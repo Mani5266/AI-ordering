@@ -41,6 +41,7 @@ model Order {
   session      TableSession @relation(fields: [sessionId], references: [id])
   providerCallId String? @unique // idempotency key for voice webhooks (PRD 9/T4)
   partialMatch Boolean  @default(false) // true when some voice items were unknown (PRD M4)
+  paid         Boolean  @default(false) // bill settled (staff Mark paid, or Razorpay webhook later)
   createdAt    DateTime @default(now())
   events       OrderEvent[]
 }

@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 
 type Line = { menu_item_id: string; name: string; qty: number; modifiers: string[]; note: string | null; veg: boolean; allergens: string[] };
-type Order = { id: string; table: number; source: string; items: Line[]; total_inr: number; status: string; partialMatch: boolean; created_at: string };
+type Order = { id: string; table: number; source: string; items: Line[]; total_inr: number; status: string; paid?: boolean; partialMatch: boolean; created_at: string };
 
 const FLOW: Record<string, string> = { new: "accepted", accepted: "cooking", cooking: "ready", ready: "served" };
 const LABEL: Record<string, string> = { new: "✅ Accept order", accepted: "🍳 Start cooking", cooking: "🔔 Mark ready", ready: "🧾 Mark served" };
@@ -18,7 +18,7 @@ export default function Kds() {
   const [fStatus, setFStatus] = useState("all");
   const [fSource, setFSource] = useState("all");
   const [tab, setTab] = useState<"live" | "book">("live");
-  const [book, setBook] = useState<{ billed_inr: number; orders: Order[] } | null>(null);
+  const [book, setBook] = useState<{ billed_inr: number; paid_inr: number; orders: Order[] } | null>(null);
 
   const load = (p: string) => {
     const h = { "x-staff-pin": p };
@@ -62,6 +62,11 @@ export default function Kds() {
 
   const act = async (id: string, to: string) => {
     await fetch(`/api/orders/${id}/action`, { method: "POST", headers: { "Content-Type": "application/json", "x-staff-pin": pin }, body: JSON.stringify({ to }) });
+    load(pin);
+  };
+
+  const markPaid = async (id: string) => {
+    await fetch(`/api/orders/${id}/paid`, { method: "POST", headers: { "x-staff-pin": pin } });
     load(pin);
   };
 
@@ -132,6 +137,11 @@ export default function Kds() {
       </div>
 
       {tab === "book" ? (
+        <div className="px-3 pt-1 text-sm font-bold text-[#0A2463]">
+          Collected today: Rs {book?.paid_inr ?? 0} · Billed: Rs {book?.billed_inr ?? 0}
+        </div>
+      ) : null}
+      {tab === "book" ? (
         <div className="grid gap-2 p-3 md:grid-cols-2 xl:grid-cols-3">
           {(book?.orders ?? []).map((o) => (
             <article key={o.id} className="rounded-2xl bg-white p-3 shadow-[0_1px_4px_rgba(10,36,99,0.08)]">
@@ -142,7 +152,11 @@ export default function Kds() {
               <div className="text-sm text-gray-700">{o.items.map((it) => `${it.qty}× ${it.name}`).join(", ")}</div>
               <div className="mt-1 flex items-center justify-between">
                 <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${o.source === "voice" ? "bg-[#0A2463] text-white" : "bg-[#3E6CB5] text-white"}`}>{o.source}</span>
-                <span className="text-sm"><span className="mr-2 capitalize text-gray-500">{o.status}</span><b>Rs {o.total_inr}</b></span>
+                <span className="text-sm"><span className="mr-2 capitalize text-gray-500">{o.status}</span>
+                  {o.paid
+                    ? <span className="rounded bg-green-100 px-2 py-0.5 text-xs font-bold text-green-800">PAID · Rs {o.total_inr}</span>
+                    : <b className="text-red-700">UNPAID · Rs {o.total_inr}</b>}
+                </span>
               </div>
             </article>
           ))}
@@ -183,9 +197,9 @@ export default function Kds() {
               {o.status.toUpperCase()} · {Math.round((Date.now() - new Date(o.created_at).getTime()) / 60000)} min ago · <b>Rs {o.total_inr}</b>
             </div>
             {o.partialMatch && <div className="mt-1 text-xs font-bold text-red-600">⚠ partial match — some items were rejected, check before cooking</div>}
-            <ul className="mt-2 text-sm">
+            <ul className="mt-2 text-sm text-gray-900">
               {o.items.map((it, k) => (
-                <li key={k} className="border-b py-1">
+                <li key={k} className="border-b border-gray-100 py-1">
                   <b>{it.qty}× {it.name}</b>
                   {it.modifiers.length > 0 && <span className="text-gray-600"> ({it.modifiers.join(", ")})</span>}
                   {it.note && <div className="text-xs text-gray-600">📝 {it.note}</div>}
@@ -193,10 +207,12 @@ export default function Kds() {
                 </li>
               ))}
             </ul>
+            <div className="mt-1 text-sm font-bold text-gray-900">Bill: Rs {o.total_inr} {o.paid && <span className="ml-1 rounded bg-green-100 px-2 py-0.5 text-xs text-green-800">PAID</span>}</div>
             {FLOW[o.status] && (
-              <button onClick={() => act(o.id, FLOW[o.status])} className="mt-3 w-full rounded-lg bg-[#0A2463] py-3 font-bold text-white">
-                {LABEL[o.status]}
-              </button>
+              <button onClick={() => act(o.id, FLOW[o.status])} className="mt-2 w-full rounded-lg bg-[#0A2463] py-3 font-bold text-white">{LABEL[o.status]}</button>
+            )}
+            {(o.status === "ready" || o.status === "served") && !o.paid && (
+              <button onClick={() => markPaid(o.id)} className="mt-2 w-full rounded-lg border-2 border-green-700 py-2.5 font-bold text-green-800">💰 Mark bill paid</button>
             )}
           </article>
         ))}
